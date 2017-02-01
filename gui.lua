@@ -2,9 +2,13 @@
 Works as extension over the game-api, takes table with a bunch of fields
 passes some to the api, makes use of the remaining ones
 
-
---below are fields that are rethrown to game-api when possible:
+The idea is:
+	a `gui` is an object related to ingame gui containers (elements that can have children) such as flow or frame
+	every element that cannot get babies is just an `element` its reference and handler is stored in nearest `gui` object.
+	When you add element to `gui`, you define handler at the same time (see more in the `add` comment).
+	When you want to add another frame or flow to a gui you draw you call a `child` method of the current `gui` object, and thus a tree of subguis is created.
 ]]
+--below are fields that are rethrown to game-api when possible:
 local api_fields={type=true,name=true,style=true,
 sprite=true,state=true,direction=true,caption=true,size=true,value=true,colspan=true}
 --apart from these, additional fields can be present for each function,
@@ -30,7 +34,7 @@ gui={
 		local anchor=p.anchor
 		
 		local n=setmetatable({
-			name=p.name,
+			name=p.name, -- mandatory field 
 			anchor=anchor,--initial element from which gui grows, created elsewhere (flow, frame)
 			data=p.data,--arbitrary data 
 			on_close=p.on_close,--destructor function
@@ -38,7 +42,7 @@ gui={
 			on_restore=p.on_restore,
 			update=p.update,
 			parent=false,--parent object of same class
-			blocked_by=false,--a link to other object that prevents this one from working
+			blocked_by=false,--a link to other object that prevents this one from working, if this field is set, gui element and its children become inactive
 			children={},--children objects of the same class
 			elements={},--buttons, textfields, radiobuttons --the direct children of the anchor
 			handlers={},--[[callback functions for elements
@@ -80,7 +84,8 @@ __index={
 		return el
 	end,
 	child=function(me,params)
-	--[[basically, a call to gui.new, it can handle creation of the anchor element (frame\flow) if you set needed fields (see api_fields) 
+	--[[basically, a call to gui.new, it can handle creation of the anchor element (frame\flow) if you set needed fields (see api_fields)
+	 if you provide `anchor` then that game object is used, you can use this to skip a generation in frames if that genreation doesn't need handlers for example, or put a completely unrelated flow or frame in the gui, whatever you'd mean by that.
 		]]
 		local dub=me.children[params.name]
 		local keep_old
@@ -108,7 +113,7 @@ __index={
 		me.anchor.destroy()
 	end,
 	check=function(me,el)--service function
-		if not me.blocked_by then
+		if not (me.blocked_by and me.blocked_by.anchor.valid) then
 			if not me.anchor.valid then return end
 			for n, e in pairs(me.elements) do
 				if e==el then

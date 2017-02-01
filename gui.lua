@@ -76,6 +76,7 @@ __index={
 			This function is serialized, so it should only reference global variables, any upvalue it might need should be stored in gui.data table.		
 		}
 		]]
+		if not par then error('par not given') end
 		local e_par={}
 		for k in pairs(api_fields) do e_par[k]=par[k] end
 		local el=me.anchor.add(e_par)
@@ -135,8 +136,26 @@ __index={
 		end
 		me:update(tick)
 	end,
+	
+	--[[LIB]]
+	--a bunch of functions I often end up recreating in relation to gui 
 	get_top=function(me)--get the topmost gui in the inheritance tree
 		return me.parent and me.parent:get_top() or me
+	end,
+	close_all=function(me)
+		me:get_top():destroy()
+	end,
+	hide=function(me)
+		me.anchor.style.visible=false
+	end,
+	unhide=function(me)
+		me.anchor.style.visible=true
+	end,
+	block_by=function(me,g)
+		me.blocked_by=g
+	end,
+	unblock=function(me)
+		me.blocked_by=nil
 	end,
 }
 }

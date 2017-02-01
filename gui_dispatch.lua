@@ -90,7 +90,7 @@ gui_dispatch={--done as singleton because I've recently learnt of those and didn
 		else--if no duplicates
 			local p=parameters
 			if not roots[p.root] then error ('incorrect gui location specified: '..p.root) end
-			p.anchor=game.players[pind].gui[p.root].add{name=p.name,type=p.type,style=p.style}
+			p.anchor=game.players[pind].gui[p.root].add{name=p.name,type=p.type,style=p.style,caption=p.caption,direction=p.direction,}
 			me.data[pind][name]=gui.new(p)
 			if p.update then table.insert(me.updatable,me.data[pind][name]) end
 			return me.data[pind][name]

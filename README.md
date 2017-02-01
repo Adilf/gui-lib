@@ -8,3 +8,4 @@ Beware, the code had previously undergone several reworks so the logic and struc
 
 ##usage
 Most of the usage is documented right in the script files, check comments in those, then see the ex_control.lua for usage example.
+More advanced usage examples can be found in my mods (somewhere).

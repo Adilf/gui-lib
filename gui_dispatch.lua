@@ -4,8 +4,9 @@ Most notably, handles the events.
 require "gui"
 
 local roots={top=true,left=true,center=true}
-gui_dispatch={--singleton as usual
+gui_dispatch={--done as singleton because I've recently learnt of those and didn't know any better
 	init=function(handle)
+	--`handle` should be a table that is stored in global, alternatively return of the function should be stored in global
 		handle.on_tick=handle.on_tick or {}
 		handle.data=handle.data or {}
 		gui_dispatch.data=handle.data
@@ -49,13 +50,6 @@ gui_dispatch={--singleton as usual
 			else table.remove(gs,i)
 			end
 		end
-		--for _,p in pairs(gui_dispatch.updatable) do
-			--for k,g in pairs(p) do
-				--if g.anchor.valid then g:on_tick(tick)
-				--else p[k]=nil
-				--end
-			--end
-		--end
 	end,
 	open=function(parameters)--creates the root element of a gui and starts gui growth
 		--[[ 
@@ -72,30 +66,30 @@ gui_dispatch={--singleton as usual
 			elements,
 			children,
 			}
-			this table is rethrown downstream to gui.new() function
+			this table is rethrown downstream to gui.new() function documentation is there
 		]]
-		--sdb(global)
 		local me=gui_dispatch
 		local pind=parameters.player_index
 		local name=parameters.name
 		me.data[pind]=me.data[pind] or {}
 		
+		local i=0
 		::retry::--this is label for goto
+		i=i+1--just a quick fix to eternal loop if on_duplicate() does not do what it should
 		if me.data[pind][name] and me.data[pind][name].anchor.valid then
-			if me.data[pind][name].on_duplicate then 
-				--local abort=me.data[pind][name]:on_duplicate(_ENV)--guis can handle teir duplicates gracefully
+			if me.data[pind][name].on_duplicate and i<10 then 
 				local abort=me.data[pind][name]:on_duplicate()--guis can handle teir duplicates gracefully
-				if not closed then
+				if not abort then
 					goto retry--this is the goto, no other way came to mind with this 
+				else
+					return
 				end
 			else
 				error  ('gui element already present'..name)
-			end
-			return 
+			end 
 		else--if no duplicates
 			local p=parameters
 			if not roots[p.root] then error ('incorrect gui location specified: '..p.root) end
-			--p.anchor=game.players[pind].gui[p.root].add{name=p.name,type=p.type,style=p.style}
 			p.anchor=game.players[pind].gui[p.root].add{name=p.name,type=p.type,style=p.style}
 			me.data[pind][name]=gui.new(p)
 			if p.update then table.insert(me.updatable,me.data[pind][name]) end

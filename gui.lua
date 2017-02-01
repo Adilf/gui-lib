@@ -10,29 +10,22 @@ sprite=true,state=true,direction=true,caption=true,size=true,value=true,colspan=
 --apart from these, additional fields can be present for each function,
 --only those will be mentioned in comments to functions
 
-local check=function(p)
---checks whether table p is valid for creation of gui object
-	if not (p.name and p.type and p.anchor and p.anchor.valid) then
-		--debug(p)
-	end
-end
 
 gui={
 	new=function(parameters)
 		--[[
 		{
-		anchor, --initial element from which gui grows, created elsewhere (flow, frame)
+		anchor, --initial element from which gui grows (flow, frame), created elsewhere, passed here as
 		data, --arbitrary data 
-		on_close, --destructor function
-		on_duplicate, --function to handle duplicates
-		on_restore, --function to restore metatables in data
+		on_close(me), --destructor function if given, called during gui:destroy() after all the children guis are destroyed
+		on_duplicate(me), --function to handle duplicates, called when another gui with the same name is already present, if it returns true, the old gui will be kept, otherwise, it should take care of removing that.
+		on_restore(me), --function to restore metatables in data during onload, if you can't restore them throug the other references
 		elements, --a table of parameters for :add() function (elements with handlers)
 		children, --a table of parameters for :child() function (so it is possible to define whole gui with one external call)(parent elements)
-		update(me,tick), --a function for on_tick handlings
+		update(me,tick), --a function for on_tick handlings, currently, it is done dirty in gui dispatch, so this function is only executed if all its parents have at least placeholder update function as well.
 		}
 		]]
 		local p=parameters
-		--check(p)
 		
 		local anchor=p.anchor
 		
@@ -73,11 +66,10 @@ __index={
 	--function for adding any active elements
 		--[[
 		{name,
-		handler,function that gets called when button pressed, text altered ...
+		handler=function(gui,object) --a function that gets called when button pressed, text altered ...
 			gets encompassing gui object as argument (the data associated with the gui is in 'arg.data'
-			and the reference to an object itself)
-			must not reference anything outside its scope
-			
+			and the reference to an object itself (button, textbox, anything)
+			This function is serialized, so it should only reference global variables, any upvalue it might need should be stored in gui.data table.		
 		}
 		]]
 		local e_par={}
@@ -88,25 +80,24 @@ __index={
 		return el
 	end,
 	child=function(me,params)
-	--[[
-		{
-		data, --arbitrary data 
-		on_close, --destructor function
-		on_duplicate, --function to handle duplicates
-		elements, --a table of parameters for :add() function 
-		children, --a table of parameters for :child() function (so it is possible to define whole gui with one external call)
-		}
+	--[[basically, a call to gui.new, it can handle creation of the anchor element (frame\flow) if you set needed fields (see api_fields) 
 		]]
 		local dub=me.children[params.name]
-		if dub and dub.anchor.valid and dub.on_duplicate then dub:on_duplicate() end
-		local e_par={}
-		for k in pairs(api_fields) do e_par[k]=params[k] end
-		params.anchor=me.anchor.add(e_par)
-		--debug(gui)
-		local ch=gui.new(params)
-		me.children[ch.name]=ch
-		ch.parent=me
-		return ch
+		local keep_old
+		if dub and dub.anchor.valid and dub.on_duplicate then 
+			keep_old=dub:on_duplicate() 
+		end
+		if not keep_old then
+			local e_par={}
+			for k in pairs(api_fields) do e_par[k]=params[k] end
+			params.anchor=params.anchor or me.anchor.add(e_par)
+			local ch=gui.new(params)
+			me.children[ch.name]=ch
+			ch.parent=me
+			return ch
+		else
+			return dub
+		end
 	end,
 	destroy=function(me)
 	--destroys the gui object
@@ -116,8 +107,7 @@ __index={
 		if me.on_close then me:on_close() end
 		me.anchor.destroy()
 	end,
-	check=function(me,el)
-	--service function
+	check=function(me,el)--service function
 		if not me.blocked_by then
 			if not me.anchor.valid then return end
 			for n, e in pairs(me.elements) do
@@ -133,14 +123,14 @@ __index={
 			me.blocked_by:check()
 		end
 	end,
-	on_tick=function(me,tick)
+	on_tick=function(me,tick)--service function
 		if not me.anchor.valid then return end
 		for _,c in pairs(me.children) do
 			if c.update then c:on_tick(tick) end
 		end
 		me:update(tick)
 	end,
-	get_top=function (me)
+	get_top=function(me)--get the topmost gui in the inheritance tree
 		return me.parent and me.parent:get_top() or me
 	end,
 }
